@@ -24,6 +24,9 @@ my $gapfilled_model = shift;
 
 -f $genome_in or die "Genome file '$genome_in' does not exist\n";
 
+open(INITIAL, ">", $initial_model) or die "Error opening $initial_model for writing: $!";
+open(GAPFILLED, ">", $gapfilled_model) or die "Error opening $gapfilled_model for writing: $!";
+
 my $genome = GenomeTypeObject->create_from_file($genome_in);
 
 print STDERR "Loading genome $genome->{scientific_name} with id $genome->{id}\n";
@@ -45,6 +48,7 @@ print "$out\n" if $opt->verbose;
 
 my($ok, $out, $err) = $env->run("fba-buildfbamodel",
 				$genome->{id},
+				"-m", "$genome->{id}.initial.fbamdl",
 				"--genomews", $env->ws,
 				"--workspace", $env->ws);
 
@@ -65,6 +69,7 @@ my @media = ();
 
 my($ok, $out, $err) = $env->run("fba-gapfill",
 				$model_id,
+				"--modelout", "$genome->{id}.gapfilled.fbamdl",
 				"--intsol",
 				@media,
 				"--sourcemdlws", $env->ws,
@@ -80,5 +85,15 @@ print "Gapfilled model created: $gapfill_id\n";
 
 print "$out\n" if $opt->verbose;
 
+($ok, $out, $err) = $env->run("ws-get", $model_id, "-w", $env->ws, "-p");
+$ok or die "Error running ws-get: \n$err\n";
 
+print INITIAL $out;
+close(INITIAL);
+
+($ok, $out, $err) = $env->run("ws-get", $gapfill_id, "-w", $env->ws, "-p");
+$ok or die "Error running ws-get: \n$err\n";
+
+print GAPFILLED $out;
+close(GAPFILLED);
 
