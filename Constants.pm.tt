@@ -1,0 +1,10 @@
+package Bio::KBase::SimpleFBA::Constants;
+
+use constant	    media_workspace => '[% media_workspace %]';
+use constant        auth_token   => '[% auth_token %]';
+
+use base 'Exporter';
+our @EXPORT_OK = qw(auth_token media_workspace);
+
+1;
+
