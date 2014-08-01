@@ -1,0 +1,2 @@
+#group-name	sfba	Simple FBA Scripts
+#command-set	scripts/(.*).pl	sfba

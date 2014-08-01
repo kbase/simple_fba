@@ -24,7 +24,7 @@ build-libs:
 
 deploy: deploy-client deploy-service
 deploy-all: deploy-client deploy-service
-deploy-client: deploy-libs deploy-scripts 
+deploy-client: build-libs deploy-libs deploy-scripts 
 
 deploy-service: 
 

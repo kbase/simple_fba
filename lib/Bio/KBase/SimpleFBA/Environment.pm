@@ -35,7 +35,7 @@ sub set_random_workspace
 
     if ($out =~ /Workspace\s*created.*id:\s*(\d+)/)
     {
-	print STDERR "created ws id $1\n";
+	# print STDERR "created ws id $1\n";
     }
 }
 
