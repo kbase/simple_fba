@@ -36,6 +36,7 @@ if ($opt->match)
     my $v = $opt->match;
     $re = qr/$v/;
 }
+
 for my $l (split(/\n/, $out))
 {
     if ($l =~ /^\s+(\d+)\s+(\S+)/)
