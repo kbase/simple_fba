@@ -65,7 +65,7 @@ print "$out\n" if $opt->verbose;
 
 my @media = ();
 @media = ("--media", $opt->media,
-	  "--mediws", Bio::KBase::SimpleFBA::Constants::media_workspace) if $opt->media;
+	  "--mediaws", Bio::KBase::SimpleFBA::Constants::media_workspace) if $opt->media;
 
 my($ok, $out, $err) = $env->run("fba-gapfill",
 				$model_id,
