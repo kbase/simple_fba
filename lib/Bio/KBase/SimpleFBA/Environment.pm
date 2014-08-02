@@ -26,7 +26,18 @@ sub set_random_workspace
 {
     my($self) = @_;
     my $n = rand(10000);
-    my $key = "sfba_" . md5_hex($n . $$ . time);
+    my $key = md5_hex($n . $$ . time);
+
+    
+    if ($ENV{KB_AUTH_USER_ID})
+    {
+	$key = "sfba_$ENV{KB_AUTH_USER_ID}_$key";
+    }
+    else
+    {
+	$key = "sfba_$key";
+    }
+    
     $self->{ws} = $key;
 
     my($ok, $out, $err) = $self->run("ws-createws", $key);
