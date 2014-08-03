@@ -10,19 +10,17 @@ use JSON::XS;
 use Bio::KBase::workspace::ScriptHelpers qw(printObjectInfo get_ws_client workspace workspaceURL parseObjectMeta parseWorkspaceMeta printObjectMeta);
 use Bio::KBase::fbaModelServices::ScriptHelpers qw(get_workspace_object fbaws get_fba_client runFBACommand universalFBAScriptCode );
 #Defining globals describing behavior
-my $primaryArgs = ["Model filename","FBA filename"];
+my $primaryArgs = ["Model filename"];
 my $translation = {};
 #Defining usage and options
 my $specs = [
-    [ 'rxns|r', 'Print all reaction fluxes'],
-    [ 'cpds|c', 'Print all compound fluxes'],
+    [ 'rxns|r', 'Print all reactions in model'],
+    [ 'cpds|c', 'Print all compounds in model'],
+    [ 'bio|b', 'Print all biomass compounds in model'],
 ];
 my ($opt,$params) = universalFBAScriptCode($specs,"sfba-exportmodel",$primaryArgs,{});
 if (!-e $opt->{"Model filename"}) {
 	die "Cannot find model file ".$opt->{"Model filename"}."!";
-}
-if (!-e $opt->{"FBA filename"}) {
-	die "Cannot find fba file ".$opt->{"FBA filename"}."!";
 }
 open( my $fh, "<", $opt->{"Model filename"});
 my $model;
@@ -30,14 +28,6 @@ my $model;
     local $/;
     my $str = <$fh>;
     $model = decode_json $str;
-}
-close($fh);
-open( $fh, "<", $opt->{"FBA filename"});
-my $fba;
-{
-    local $/;
-    my $str = <$fh>;
-    $fba = decode_json $str;
 }
 close($fh);
 if ($opt->{rxns}) {
@@ -53,14 +43,7 @@ if ($opt->{rxns}) {
 	for (my $i=0; $i < @{$output}; $i++) {
 		$rxns->{$output->[$i]->{id}} = $output->[$i];
 	}
-	print "Reaction\tName\tEnzyme\tEquation\tDefinition\tDeltaG\tGPR\tUpper bound\tLower bound\tMax\tMin\tFlux\n";
-	my $fluxes = {};
-	my $fbarxns = $fba->{FBAReactionVariables};
-	for (my $i=0; $i < @{$fbarxns}; $i++) {
-		if ($fbarxns->[$i]->{modelreaction_ref} =~ /(rxn\d+)_/) {
-			$fluxes->{$1} = $fbarxns->[$i];
-		}
-	}
+	print "Reaction\tName\tEnzyme\tEquation\tDefinition\tDeltaG\tGPR\n";
 	for (my $i=0; $i < @{$reactions}; $i++) {
 		my $reaction = $reactions->[$i];
 		if ($reaction->{reaction_ref} =~ /(rxn\d+)$/) {
@@ -95,13 +78,8 @@ if ($opt->{rxns}) {
 			}
 			$rxn->{id} = $id;
 			$rxn->{gpr} = $gpr;
-			if (defined($fluxes->{$id})) {
-				foreach my $key (keys(%{$fluxes->{$id}})) {
-					$rxn->{$key} = $fluxes->{$id}->{$key};
-				}	
-			}
 			print_file_line(
-				["id","name","enzymes","equation","definition","deltaG","gpr","upperBound","lowerBound","max","min","value"],
+				["id","name","enzymes","equation","definition","deltaG","gpr"],
 				{enzymes => 1},
 				$rxn
 			);
@@ -120,14 +98,7 @@ if ($opt->{rxns}) {
 	for (my $i=0; $i < @{$output}; $i++) {
 		$cpds->{$output->[$i]->{id}} = $output->[$i];
 	}
-	my $fluxes = {};
-	my $fbacpds = $fba->{FBACompoundVariables};
-	for (my $i=0; $i < @{$fbacpds}; $i++) {
-		if ($fbacpds->[$i]->{modelcompound_ref} =~ /(cpd\d+_.+)$/) {
-			$fluxes->{$1} = $fbacpds->[$i];
-		}
-	}
-	print "Compound\tName\tFormula\tCharge\tDeltaG\tCompartment\tUpper bound\tLower bound\tMax\tMin\tFlux\n";
+	print "Compound\tName\tFormula\tCharge\tDeltaG\tCompartment\n";
 	for (my $i=0; $i < @{$compounds}; $i++) {
 		my $compound = $compounds->[$i];
 		if ($compound->{compound_ref} =~ /(cpd\d+)$/) {
@@ -140,16 +111,49 @@ if ($opt->{rxns}) {
 				}
 				$cpd->{id} = $id;
 				$cpd->{cmp} = $cmp;
-				if (defined($fluxes->{$id."_".$cmp})) {
-					foreach my $key (keys(%{$fluxes->{$id."_".$cmp}})) {
-						$cpd->{$key} = $fluxes->{$id."_".$cmp}->{$key};
-					}	
-					print_file_line(
-						["id","name","formula","charge","deltaG","cmp","upperBound","lowerBound","max","min","value"],
-						{},
-						$cpd
-					);
+				print_file_line(
+					["id","name","formula","charge","deltaG","cmp"],
+					{},
+					$cpd
+				);
+			}
+		}
+	}
+} elsif ($opt->{bio}) {
+	my $bios = $model->{biomasses};
+	my $cpds = {};
+	for (my $i=0; $i < @{$bios}; $i++) {
+		my $bio = $bios->[$i];
+		my $biocpds = $bio->{biomasscompounds};
+		for (my $j=0; $j < @{$biocpds}; $j++) {
+			if ($biocpds->[$j]->{modelcompound_ref} =~ /(cpd\d+)_/) {
+				$cpds->{$1} = {};
+			}
+		}
+	}
+	my $output = get_fba_client()->get_compounds({compounds => [keys(%{$cpds})]});
+	for (my $i=0; $i < @{$output}; $i++) {
+		$cpds->{$output->[$i]->{id}} = $output->[$i];
+	}
+	print "Compound\tName\tFormula\tCharge\tDeltaG\tBiomass\tBiomass coefficient\n";
+	for (my $i=0; $i < @{$bios}; $i++) {
+		my $bio = $bios->[$i];
+		my $biocpds = $bio->{biomasscompounds};
+		for (my $j=0; $j < @{$biocpds}; $j++) {
+			if ($biocpds->[$j]->{modelcompound_ref} =~ /(cpd\d+)_/) {
+				my $id = $1;
+				my $cpd = {};
+				if (defined($cpds->{$id})) {
+					$cpd = $cpds->{$id};
 				}
+				$cpd->{id} = $id;
+				$cpd->{biomass} = $bio->{id};
+				$cpd->{coefficient} = $biocpds->[$j]->{coefficient};
+				print_file_line(
+					["id","name","formula","charge","deltaG","biomass","coefficient"],
+					{},
+					$cpd
+				);
 			}
 		}
 	}
