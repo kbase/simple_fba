@@ -72,12 +72,17 @@ if ($opt->{rxns}) {
 			if (@{$plist} > 0) {
 				$gpr = "(".join(" or ",@{$plist}).")";
 			}
+			my $rxn = {};
 			if (defined($rxns->{$id})) {
-				my $rxn = $rxns->{$id};
-				print $rxn->{id}."\t".$rxn->{name}."\t".$rxn->{enzymes}->[0]."\t".$rxn->{equation}."\t".$rxn->{definition}."\t".$rxn->{deltaG}."\t".$gpr."\n";
-			} else {
-				print $id."\t\t\t\t\t\t".$gpr."\n";
+				$rxn = $rxns->{$id};
 			}
+			$rxn->{id} = $id;
+			$rxn->{gpr} = $gpr;
+			print_file_line(
+				["id","name","enzymes","equation","definition","deltaG","gpr"],
+				{enzymes => 1},
+				$rxn
+			);
 		}
 	}
 } elsif ($opt->{cpds}) {
@@ -100,12 +105,17 @@ if ($opt->{rxns}) {
 			my $id = $1;
 			if ($compound->{modelcompartment_ref} =~ /([a-zA-Z]\d+)$/) {
 				my $cmp = $1;
+				my $cpd = {};
 				if (defined($cpds->{$id})) {
-					my $cpd = $cpds->{$id};
-					print $cpd->{id}."\t".$cpd->{name}."\t".$cpd->{formula}."\t".$cpd->{charge}."\t".$cpd->{deltaG}."\t".$cmp."\n";
-				} else {
-					print $id."\t\t\t\t\t".$cmp."\n";
+					$cpd = $cpds->{$id};
 				}
+				$cpd->{id} = $id;
+				$cpd->{cmp} = $cmp;
+				print_file_line(
+					["id","name","formula","charge","deltaG","cmp"],
+					{},
+					$cpd
+				);
 			}
 		}
 	}
@@ -131,13 +141,39 @@ if ($opt->{rxns}) {
 		my $biocpds = $bio->{biomasscompounds};
 		for (my $j=0; $j < @{$biocpds}; $j++) {
 			if ($biocpds->[$j]->{modelcompound_ref} =~ /(cpd\d+)_/) {
-				if (defined($cpds->{$1})) {
-					my $cpd = $cpds->{$1};
-					print $cpd->{id}."\t".$cpd->{name}."\t".$cpd->{formula}."\t".$cpd->{charge}."\t".$cpd->{deltaG}."\t".$bio->{id}."\t".$biocpds->[$j]->{coefficient}."\n";
-				} else {
-					print $1."\t\t\t\t\t".$bio->{id}."\t".$biocpds->[$j]->{coefficient}."\n";
+				my $id = $1;
+				my $cpd = {};
+				if (defined($cpds->{$id})) {
+					$cpd = $cpds->{$id};
 				}
+				$cpd->{id} = $id;
+				$cpd->{biomass} = $bio->{id};
+				$cpd->{coefficient} = $biocpds->[$j]->{coefficient};
+				print_file_line(
+					["id","name","formula","charge","deltaG","biomass","coefficient"],
+					{},
+					$cpd
+				);
 			}
 		}
 	}
+}
+
+sub print_file_line {
+	my $headings = shift;
+	my $arrayheadings = shift;
+	my $data = shift;
+	for (my $i=0; $i < @{$headings}; $i++) {
+		if ($i > 0) {
+			print "\t";
+		}
+		if (defined($arrayheadings->{$headings->[$i]})) {
+			if (defined($data->{$headings->[$i]}->[0])) {
+				print $data->{$headings->[$i]}->[0];
+			}
+		} elsif (defined($data->{$headings->[$i]})) {
+			print $data->{$headings->[$i]};
+		}
+	}
+	print "\n";
 }
