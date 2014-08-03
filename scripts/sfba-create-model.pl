@@ -32,9 +32,9 @@ my $genome = GenomeTypeObject->create_from_file($genome_in);
 print STDERR "Loading genome $genome->{scientific_name} with id $genome->{id}\n";
 
 my $env = Bio::KBase::SimpleFBA::Environment->new(verbose => ($opt->verbose ? 1 : 0));
-$env->set_random_workspace();
-
-my($ok, $out, $err) = $env->run("fba-loadgenome", $genome_in, "--fromfile", "-w", $env->ws);
+$env->check_for_workspace();
+my $gid = $env->generate_random_jobid().".g";
+my($ok, $out, $err) = $env->run("fba-loadgenome", $genome_in, "--fromfile", "--outputid", $gid, "-w", $env->ws);
 
 if (!$ok)
 {
@@ -47,8 +47,8 @@ print "Loaded genome $loaded\n";
 print "$out\n" if $opt->verbose;
 
 my($ok, $out, $err) = $env->run("fba-buildfbamodel",
-				$genome->{id},
-				"-m", "$genome->{id}.initial.fbamdl",
+				$gid,
+				"-m", $gid.".initial.fbamdl",
 				"--genomews", $env->ws,
 				"--workspace", $env->ws);
 
@@ -68,11 +68,10 @@ my @media = ();
 	  "--mediaws", Bio::KBase::SimpleFBA::Constants::media_workspace) if $opt->media;
 
 my($ok, $out, $err) = $env->run("fba-gapfill",
-				$model_id,
-				"--modelout", "$genome->{id}.gapfilled.fbamdl",
+				$gid.".initial.fbamdl",
+				"--modelout", $gid.".gapfilled.fbamdl",
 				"--intsol",
 				@media,
-				"--sourcemdlws", $env->ws,
 				"--workspace", $env->ws);
 if (!$ok)
 {
@@ -85,13 +84,13 @@ print "Gapfilled model created: $gapfill_id\n";
 
 print "$out\n" if $opt->verbose;
 
-($ok, $out, $err) = $env->run("ws-get", $model_id, "-w", $env->ws, "-p");
+($ok, $out, $err) = $env->run("ws-get", $gid.".initial.fbamdl", "-w", $env->ws, "-p");
 $ok or die "Error running ws-get: \n$err\n";
 
 print INITIAL $out;
 close(INITIAL);
 
-($ok, $out, $err) = $env->run("ws-get", $gapfill_id, "-w", $env->ws, "-p");
+($ok, $out, $err) = $env->run("ws-get", $gid.".gapfilled.fbamdl", "-w", $env->ws, "-p");
 $ok or die "Error running ws-get: \n$err\n";
 
 print GAPFILLED $out;

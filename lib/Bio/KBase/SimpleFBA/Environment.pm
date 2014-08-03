@@ -14,12 +14,32 @@ sub new
     my($class, %opts ) = @_;
 
     my $self = {
-	token => Bio::KBase::SimpleFBA::Constants::auth_token,
-	opts => { %opts },
+		token => Bio::KBase::SimpleFBA::Constants::auth_token,
+		opts => { %opts },
     };
+    
+    if ($self->{token} =~ m/^un=(.+)\|tokenid/) {
+    	$self->{token_user} = $1;
+    }
 
     bless $self, $class;
     return $self;
+}
+
+sub generate_random_jobid {
+	my($self) = @_;
+    my $n = rand(10000);
+    my $key = md5_hex($n . $$ . time);
+    return $key;
+}
+
+sub check_for_workspace {
+	my($self) = @_;
+	my $wsid = $self->{token_user}."_".$ENV{KB_AUTH_USER_ID}."_sfba_workspace";
+	eval {
+		my($ok, $out, $err) = $self->run("ws-createws", $wsid);
+	};
+	$self->{ws} = $wsid;
 }
 
 sub set_random_workspace
