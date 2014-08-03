@@ -80,7 +80,7 @@ if (!$ok)
 }
 
 my $gapfill_keys = $env->parse_output($out);
-my $gapfill_id = $build_keys->{ObjectName};
+my $gapfill_id = $gapfill_keys->{ObjectName};
 print "Gapfilled model created: $gapfill_id\n";
 
 print "$out\n" if $opt->verbose;
