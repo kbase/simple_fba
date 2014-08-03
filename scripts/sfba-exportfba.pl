@@ -89,17 +89,22 @@ if ($opt->{rxns}) {
 			if (@{$plist} > 0) {
 				$gpr = "(".join(" or ",@{$plist}).")";
 			}
+			my $rxn = {};
 			if (defined($rxns->{$id})) {
-				my $rxn = $rxns->{$id};
-				print $rxn->{id}."\t".$rxn->{name}."\t".$rxn->{enzymes}->[0]."\t".$rxn->{equation}."\t".$rxn->{definition}."\t".$rxn->{deltaG}."\t".$gpr;
-			} else {
-				print $id."\t\t\t\t\t\t".$gpr;
+				$rxn = $rxns->{$id};
 			}
+			$rxn->{id} = $id;
+			$rxn->{gpr} = $gpr;
 			if (defined($fluxes->{$id})) {
-				print $fluxes->{$id}->{upperBound}."\t".$fluxes->{$id}->{lowerBound}."\t".$fluxes->{$id}->{max}."\t".$fluxes->{$id}->{min}."\t".$fluxes->{$id}->{value}."\n";
-			} else {
-				print "\t\t\t\t\t\n";
+				foreach my $key (keys(%{$fluxes->{$id}})) {
+					$rxn->{$key} = $fluxes->{$id}->{$key};
+				}	
 			}
+			print_file_line(
+				["id","name","enzymes","equation","definition","deltaG","gpr","upperBound","lowerBound","max","min","value"],
+				{enzymes => 1},
+				$rxn
+			);
 		}
 	}
 } elsif ($opt->{cpds}) {
@@ -129,18 +134,42 @@ if ($opt->{rxns}) {
 			my $id = $1;
 			if ($compound->{modelcompartment_ref} =~ /([a-zA-Z]\d+)$/) {
 				my $cmp = $1;
+				my $cpd = {};
 				if (defined($cpds->{$id})) {
-					my $cpd = $cpds->{$id};
-					print $cpd->{id}."\t".$cpd->{name}."\t".$cpd->{formula}."\t".$cpd->{charge}."\t".$cpd->{deltaG}."\t".$cmp;
-				} else {
-					print $id."\t\t\t\t\t".$cmp;
+					$cpd = $cpds->{$id};
 				}
+				$cpd->{id} = $id;
+				$cpd->{cmp} = $cmp;
 				if (defined($fluxes->{$id."_".$cmp})) {
-					print $fluxes->{$id."_".$cmp}->{upperBound}."\t".$fluxes->{$id."_".$cmp}->{lowerBound}."\t".$fluxes->{$id."_".$cmp}->{max}."\t".$fluxes->{$id."_".$cmp}->{min}."\t".$fluxes->{$id."_".$cmp}->{value}."\n";
-				} else {
-					print "\t\t\t\t\t\n";
+					foreach my $key (keys(%{$fluxes->{$id."_".$cmp}})) {
+						$cpd->{$key} = $fluxes->{$id."_".$cmp}->{$key};
+					}	
+					print_file_line(
+						["id","name","formula","charge","deltaG","cmp","upperBound","lowerBound","max","min","value"],
+						{},
+						$cpd
+					);
 				}
 			}
 		}
 	}
+}
+
+sub print_file_line {
+	my $headings = shift;
+	my $arrayheadings = shift;
+	my $data = shift;
+	for (my $i=0; $i < @{$headings}; $i++) {
+		if ($i > 0) {
+			print "\t";
+		}
+		if (defined($arrayheadings->{$headings->[$i]})) {
+			if (defined($data->{$headings->[$i]}->[0])) {
+				print $data->{$headings->[$i]}->[0];
+			}
+		} elsif (defined($data->{$headings->[$i]})) {
+			print $data->{$headings->[$i]};
+		}
+	}
+	print "\n";
 }
