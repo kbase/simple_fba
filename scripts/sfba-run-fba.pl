@@ -6,7 +6,6 @@ use strict;
 use Data::Dumper;
 use Getopt::Long::Descriptive;
 use Bio::KBase::SimpleFBA::Environment;
-use GenomeTypeObject;
 
 my($opt, $usage) = describe_options("%c %o model model-output",
 				    ["media=s" => 'Media name'],
@@ -26,10 +25,11 @@ my $results_out = shift;
 open(OUT, ">", $results_out) or die "Cannot write output file $results_out: $!";
 
 my $env = Bio::KBase::SimpleFBA::Environment->new(verbose => ($opt->verbose ? 1 : 0));
-$env->set_random_workspace();
+$env->check_for_workspace();
+my $mid = $env->generate_random_jobid().".m";
 
 my($ok, $out, $err) = $env->run("ws-load",
-				"KBaseFBA.FBAModel", "model", $model_in,
+				"KBaseFBA.FBAModel", $mid, $model_in,
 				"-w", $env->ws);
 
 $ok or die "Error loading model into workspace:\n$err\n";
@@ -43,7 +43,7 @@ my @media = ();
 	  "--mediaws", Bio::KBase::SimpleFBA::Constants::media_workspace) if $opt->media;
 
 ($ok, $out, $err) = $env->run("fba-runfba",
-			      $model_id,
+			      $mid,
 			      "--modelws", $env->ws,
 			      @media,
 			      "-w", $env->ws);
